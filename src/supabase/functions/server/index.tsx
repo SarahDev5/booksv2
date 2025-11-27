@@ -10,23 +10,25 @@ app.use('*', cors());
 app.use('*', logger(console.log));
 
 const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('VITE_SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
 // Helper function to verify user authentication
 async function verifyUser(request: Request) {
-  const accessToken = request.headers.get('Authorization')?.split(' ')[1];
-  if (!accessToken) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
     return { error: 'No token provided', userId: null };
   }
-  
-  const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-  if (error || !user) {
-    return { error: 'Unauthorized', userId: null };
+
+  const accessToken = authHeader.split(' ')[1];
+  const { data, error } = await supabase.auth.getUser(accessToken);
+
+  if (error || !data.user) {
+    return { error: error?.message || 'Unauthorized', userId: null };
   }
-  
-  return { error: null, userId: user.id };
+
+  return { error: null, userId: data.user.id };
 }
 
 // Generate unique ID
